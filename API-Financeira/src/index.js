@@ -4,6 +4,22 @@ const express = require("express");
 const customers = [];
 const app = express();
 app.use(express.json());
+
+//Middleware
+function verifyIfExixtisAccountCPF(request, response, next) {
+  const { cpf } = request.headers;
+  const customer = customers.find((customer) => customer.cpf === cpf);
+
+  if (!customer) {
+    return response.status(400).json({ error: "Customer not found" });
+  }
+  request.customer = customer;
+  return next();
+}
+
+// tudo que estiver abaixo dele e verificada com o Middleware
+//app.use(verifyIfExixtisAccountCPF);
+
 app.post("/account", (request, response) => {
   const { cpf, name } = request.body;
   const customerAlredyExists = customers.some(
@@ -11,7 +27,7 @@ app.post("/account", (request, response) => {
   );
 
   if (customerAlredyExists) {
-    return response.status(400).json({ erroe: "customer already exists !" });
+    return response.status(400).json({ error: "customer already exists !" });
   }
 
   customers.push({
@@ -23,15 +39,9 @@ app.post("/account", (request, response) => {
   return response.status(201).send();
 });
 
-app.get("/statement/:cpf", (request, response) => {
-  const { cpf } = request.params;
-
-  const customer = customers.find((customer) => customer.cpf === cpf);
-
-  if (!customer) {
-    return response.status(400).json({ errr: "Customer not found" });
-  }
-
+app.use(verifyIfExixtisAccountCPF);
+app.get("/statement", verifyIfExixtisAccountCPF, (request, response) => {
+  const { customer } = request;
   return response.json(customer.statement);
 });
 app.listen(3333);
